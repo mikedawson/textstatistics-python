@@ -17,9 +17,12 @@ class TextStatistics(object):
         '''
         Constructor
         '''
-        self.text = text
+        self.text = self.clean_text(text)
         
     def clean_text(self, text):
+        if text is None:
+            return self.text
+        
         full_stop_tags = ['li', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'dd']
         
         for tag_name in full_stop_tags:
@@ -48,27 +51,27 @@ class TextStatistics(object):
         
         return text
 
-    def flesch_kincaid_reading_ease(self, text):
+    def flesch_kincaid_reading_ease(self, text = None):
         text = self.clean_text(text)
         return round((206.835 - (1.015 * self.average_words_per_sentence(text)) - (84.6 * self.average_syllables_per_word(text)))*10)/10
 
-    def flesch_kincaid_grade_level(self, text):
+    def flesch_kincaid_grade_level(self, text = None):
         text = self.clean_text(text)
         return round(((0.39 * self.average_words_per_sentence(text)) + (11.8 * self.average_syllables_per_word(text)) - 15.59)*10)/10
     
-    def gunning_fog_score(self, text):
+    def gunning_fog_score(self, text = None):
         text = self.clean_text(text)
         return round(((self.average_words_per_sentence(text) + self.percentage_words_with_three_syllables(text, False)) * 0.4)*10)/10
 
-    def coleman_liau_index(self, text):
+    def coleman_liau_index(self, text = None):
         text = self.clean_text(text)
         return round(((5.89 * (self.letter_count(text) / self.word_count(text))) - (0.3 * (self.sentence_count(text) / self.word_count(text))) - 15.8 ) *10)/10
 
-    def smog_index(self, text):
+    def smog_index(self, text = None):
         text = self.clean_text(text)
         return round(1.043 * math.sqrt((self.words_with_three_syllables(text) * (30 / self.sentence_count(text))) + 3.1291)*10)/10
     
-    def automated_readability_index(self, text):
+    def automated_readability_index(self, text = None):
         text = self.clean_text(text)
         return round(((4.71 * (self.letter_count(text) / self.word_count(text))) + (0.5 * (self.word_count(text) / self.sentence_count(text))) - 21.43)*10)/10;
 
@@ -168,23 +171,23 @@ class TextStatistics(object):
         
         return max(syllable_count, 1)
     
-    def text_length(self, text):
+    def text_length(self, text = None):
         text = self.clean_text(text)
         return len(text) 
     
-    def letter_count(self, text):
+    def letter_count(self, text = None):
         text = self.clean_text(text)
         #strangely - re.IGNORECASE will leave the last . on text
         repl = re.sub("[^a-z|A-Z]+", "", text)
         return len(repl)
         
     
-    def sentence_count(self, text):
+    def sentence_count(self, text = None):
         text = self.clean_text(text)
         text = re.sub("[^\\.!?]", "", text)
         return max(len(text), 1)
     
-    def words_with_three_syllables(self, text, count_proper_nouns = True):
+    def words_with_three_syllables(self, text = None, count_proper_nouns = True):
         text = self.clean_text(text)
         long_word_count = 0
         
@@ -198,35 +201,80 @@ class TextStatistics(object):
         
         return long_word_count
     
-    def percentage_words_with_three_syllables(self, text, count_proper_nouns = True):
+    def percentage_words_with_three_syllables(self, text = None, count_proper_nouns = True):
         text = self.clean_text(text)
         return self.words_with_three_syllables(text, count_proper_nouns) / self.word_count(text)
     
-    def word_count(self, text):
+    def word_count(self, text = None):
         text = self.clean_text(text)
         
         #In case of a zero length item... split will return an array of length 1
         if len(text) == 0:
             return 0
         
-        return len(re.split("[^a-zA-Z0-9]+",text)) 
+        return len(self.get_words(text)) 
     
-    def average_syllables_per_word(self, text):
+    def get_words(self, cleaned_text):
+        return re.split("[^a-zA-Z0-9]+",cleaned_text)
+    
+    def get_distinct_words(self, text = None):
+        text = self.clean_text(text)
+        word_arr = re.split("[^a-zA-Z0-9]+", text)
+        distinct_word_arr = []
+        for word in word_arr:
+            word = word.lower()
+            word = re.sub("[^a-zA-Z]","", word)
+            if word not in distinct_word_arr:
+                distinct_word_arr.append(word)
+        
+        return distinct_word_arr
+    
+    def word_count_distinct(self, text = None):
+        """Count the number of distinct different words"""
+        word_arr = self.get_distinct_words(text)
+        return len(word_arr)
+            
+        
+    
+    def average_syllables_per_word(self, text = None):
         text = self.clean_text(text)
         
         syllable_count = 0
         word_count = self.word_count(text)
-        word_arr = re.split("s+", text)
+        word_arr = self.get_words(text)
         for word in word_arr:
             syllable_count += self.syllable_count(word)
         
-        return max(syllable_count, 1) / max(word_count, 1)
+        return float(max(syllable_count, 1)) / float(max(word_count, 1))
     
-    def average_words_per_sentence(self, text):
+    def max_syllables_per_word(self, text = None):
         text = self.clean_text(text)
-        return self.word_count(text) / self.sentence_count(text)
+        
+        max_value = 0
+        word_arr = self.get_words(text)
+        for word in word_arr:
+            num_syllables = self.syllable_count(word)
+            if num_syllables > max_value:
+                max_value = num_syllables
+        
+        return max_value
+            
     
+    def average_words_per_sentence(self, text = None):
+        text = self.clean_text(text)
+        return float(self.word_count(text)) / float(self.sentence_count(text))
     
+    def max_words_per_sentence(self, text = None):
+        #split into sentences
+        text = self.clean_text(text)
+        sentence_arr = re.split("[\\.!?]", text)
+        max_words = 0
+        for sentence in sentence_arr:
+            word_count = self.word_count(sentence)
+            if word_count > max_words:
+                max_words = word_count
+        
+        return max_words
     
 def textstats_is_not_whitespace(word):
     """Utility method for filter to filter out blank words"""
